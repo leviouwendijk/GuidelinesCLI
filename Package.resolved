@@ -1,0 +1,51 @@
+{
+  "originHash" : "f79eb93c986db3a2f3086101fa72994fc379138be9684a0392388c9e509e182a",
+  "pins" : [
+    {
+      "identity" : "ansi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/ANSI",
+      "state" : {
+        "branch" : "master",
+        "revision" : "073d9ca7870b688a312608acf14eae6ba052c0d6"
+      }
+    },
+    {
+      "identity" : "difference",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Difference",
+      "state" : {
+        "branch" : "master",
+        "revision" : "ca0f33316fcf56ace04f1f5a1bb178667a291abc"
+      }
+    },
+    {
+      "identity" : "guidelines",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Guidelines.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "ca6ecc81961d7c14f338adadc827095d95adf128"
+      }
+    },
+    {
+      "identity" : "strings",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Strings",
+      "state" : {
+        "branch" : "master",
+        "revision" : "86a939d7bbb3e25808f88fbcedcee4069a5a5ae1"
+      }
+    },
+    {
+      "identity" : "terminal",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Terminal.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "95b8c4bbb8270018b9c2031119fcd486c0114696"
+      }
+    }
+  ],
+  "version" : 3
+}
