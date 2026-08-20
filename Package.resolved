@@ -1,5 +1,5 @@
 {
-  "originHash" : "f79eb93c986db3a2f3086101fa72994fc379138be9684a0392388c9e509e182a",
+  "originHash" : "a206da3c9c74afb3c9581de2257d3b25455c2109d0229b944cbf16ed1dda069b",
   "pins" : [
     {
       "identity" : "ansi",
@@ -20,12 +20,48 @@
       }
     },
     {
+      "identity" : "fuzzy",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Fuzzy.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "99b7d295446f9574161daa9bba60a0815df9b2ec"
+      }
+    },
+    {
       "identity" : "guidelines",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/Guidelines.git",
       "state" : {
         "branch" : "master",
-        "revision" : "ca6ecc81961d7c14f338adadc827095d95adf128"
+        "revision" : "5fd86e2bf19bae52225bb60fa92849e384516492"
+      }
+    },
+    {
+      "identity" : "matching",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Matching.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "c18f9be3f8c8e05ca0645bb3de0ed1dad807a3a1"
+      }
+    },
+    {
+      "identity" : "position",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Position.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "c80214283130c1bd4fc1c54dd5f3c574e3e4986c"
+      }
+    },
+    {
+      "identity" : "ranking",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Ranking.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "5180cfb8c8e0ff6ec6224b3430507cccd83995a4"
       }
     },
     {
@@ -44,6 +80,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "95b8c4bbb8270018b9c2031119fcd486c0114696"
+      }
+    },
+    {
+      "identity" : "tokens",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Tokens.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "4e6c16afcaa81606fa7b2dcd80f9a25965403687"
       }
     }
   ],

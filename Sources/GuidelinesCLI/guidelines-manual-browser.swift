@@ -2,8 +2,19 @@ import Guidelines
 import Terminal
 
 struct GuidelinesManualBrowser {
+    private enum RootAction:
+        Hashable,
+        Sendable
+    {
+        case search
+        case area(GuidelineArea)
+    }
+
     private final class NavigationState {
+        var rootAction: RootAction?
         var area: GuidelineArea?
+        var searchResultID: String?
+        var searchQuery: String = ""
 
         var chapterByArea: [
             GuidelineArea: String
@@ -16,6 +27,9 @@ struct GuidelinesManualBrowser {
 
     private let navigation =
         NavigationState()
+
+    private let searchIndex =
+        GuidelineSearchIndex()
 
     private enum PageAction:
         Hashable,
@@ -37,58 +51,149 @@ struct GuidelinesManualBrowser {
         while true {
             clearPage()
 
-            let choices = GuidelineArea.allCases.map {
-                area in
-
-                let chapters = chapters(
-                    in: area
-                )
-
-                let guidelineCount = chapters
-                    .reduce(
-                        0
-                    ) {
-                        partial,
-                        chapter in
-
-                        partial
-                            + chapter.guidelines.count
-                    }
-
-                return TerminalMenuItem(
-                    id: area,
-                    title: area.terminalTitle,
+            var choices: [
+                TerminalMenuItem<RootAction>
+            ] = [
+                .init(
+                    id: .search,
+                    title: "Search manual",
                     caption:
-                        "\(chapters.count) chapters, "
-                        + "\(guidelineCount) guidelines"
-                )
-            }
+                        "Fuzzy-ranked search across chapters, "
+                        + "guidelines, summaries, references, and content."
+                ),
+            ]
+
+            choices.append(
+                contentsOf:
+                    GuidelineArea.allCases.map {
+                        area in
+
+                        let chapters = chapters(
+                            in: area
+                        )
+
+                        let guidelineCount = chapters
+                            .reduce(
+                                0
+                            ) {
+                                partial,
+                                chapter in
+
+                                partial
+                                    + chapter.guidelines.count
+                            }
+
+                        return TerminalMenuItem(
+                            id: RootAction.area(
+                                area
+                            ),
+                            title: area.terminalTitle,
+                            caption:
+                                "\(chapters.count) chapters, "
+                                + "\(guidelineCount) guidelines"
+                        )
+                    }
+            )
 
             let result = try Terminal.chooseResult(
                 "Guidelines",
                 choices: choices,
-                default: navigation.area,
+                default:
+                    navigation.rootAction
+                    ?? navigation.area.map(
+                        RootAction.area
+                    )
+                    ?? .search,
                 instructions:
-                    "Navigate with Ctrl-P/Ctrl-N, arrows, or k/j. "
-                    + "Enter opens. q/Esc exits."
+                    "Enter opens. "
+                    + "Search covers the complete manual. "
+                    + "q/Esc exits."
             )
 
-            navigation.area =
+            navigation.rootAction =
                 result.currentID
-                ?? navigation.area
+                ?? navigation.rootAction
 
             guard case .picked(
-                let area
+                let action
             ) = result else {
                 return
             }
 
-            navigation.area =
-                area
+            navigation.rootAction =
+                action
 
-            try browse(
-                area
+            switch action {
+            case .search:
+                try search()
+
+            case .area(let area):
+                navigation.area =
+                    area
+
+                try browse(
+                    area
+                )
+            }
+        }
+    }
+
+    private func search() throws {
+        let picker = GuidelineLiveSearch(
+            searchIndex: searchIndex,
+            configuration: .init(
+                debounceMilliseconds: 50,
+                maximumVisibleResults: 10,
+                outputStream: .standardError
             )
+        )
+
+        while true {
+            let result = try picker.run(
+                initialQuery:
+                    navigation.searchQuery,
+                initialCurrentID:
+                    navigation.searchResultID
+            )
+
+            switch result {
+            case .cancelled(
+                let query,
+                let currentID
+            ):
+                navigation.searchQuery =
+                    query
+
+                navigation.searchResultID =
+                    currentID
+
+                return
+
+            case .picked(
+                let entry,
+                let query
+            ):
+                navigation.searchQuery =
+                    query
+
+                navigation.searchResultID =
+                    entry.id
+
+                switch entry.target {
+                case .chapterOverview:
+                    try showOverview(
+                        entry.chapter
+                    )
+
+                case .guideline(
+                    let index
+                ):
+                    _ = try read(
+                        entry.chapter,
+                        startingAt: index
+                    )
+                }
+            }
         }
     }
 

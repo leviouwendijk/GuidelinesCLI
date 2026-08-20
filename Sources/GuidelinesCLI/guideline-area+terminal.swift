@@ -2,15 +2,21 @@ import Guidelines
 
 extension GuidelineArea {
     var terminalTitle: String {
-        switch self {
-        case .design:
-            "Design"
+        switch rawValue {
+        case "design":
+            return "Design"
 
-        case .ergonomics:
-            "Ergonomics"
+        case "ergonomics":
+            return "Ergonomics"
 
-        case .structure:
-            "Structure"
+        case "structure":
+            return "Structure"
+
+        case "ai":
+            return "AI"
+
+        default:
+            return rawValue
         }
     }
 }

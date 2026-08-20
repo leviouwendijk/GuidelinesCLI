@@ -24,6 +24,18 @@ let package = Package(
             url: "https://github.com/leviouwendijk/Terminal.git",
             branch: "master"
         ),
+        .package(
+            url: "https://github.com/leviouwendijk/Fuzzy.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Matching.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Ranking.git",
+            branch: "master"
+        ),
     ],
     targets: [
         .executableTarget(
@@ -36,6 +48,18 @@ let package = Package(
                 .product(
                     name: "Terminal",
                     package: "Terminal"
+                ),
+                .product(
+                    name: "Fuzzy",
+                    package: "Fuzzy"
+                ),
+                .product(
+                    name: "Matching",
+                    package: "Matching"
+                ),
+                .product(
+                    name: "Ranking",
+                    package: "Ranking"
                 ),
             ]
         ),
