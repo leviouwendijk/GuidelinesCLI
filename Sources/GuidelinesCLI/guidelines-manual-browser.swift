@@ -23,6 +23,10 @@ struct GuidelinesManualBrowser {
         var entryByChapter: [
             String: String
         ] = [:]
+
+        var scrollOffsetByReference: [
+            String: Int
+        ] = [:]
     }
 
     private let navigation =
@@ -31,23 +35,22 @@ struct GuidelinesManualBrowser {
     private let searchIndex =
         GuidelineSearchIndex()
 
-    private enum PageAction:
-        Hashable,
-        Sendable
-    {
-        case previous
-        case chapter
-        case next
-    }
-
-    private enum ChapterAction:
-        Hashable,
-        Sendable
-    {
-        case back
-    }
-
     func run() throws {
+        let session = try TerminalSession(
+            options:
+                TerminalSession.Options(
+                    useAlternateScreen: true,
+                    hideCursor: false,
+                    useRawMode: false,
+                    restoreOnInterrupt: true,
+                    outputStream: .standardError
+                )
+        )
+
+        defer {
+            session.restore()
+        }
+
         while true {
             clearPage()
 
@@ -95,7 +98,7 @@ struct GuidelinesManualBrowser {
                     }
             )
 
-            let result = try Terminal.chooseResult(
+            let result = try chooseResult(
                 "Guidelines",
                 choices: choices,
                 default:
@@ -219,7 +222,7 @@ struct GuidelinesManualBrowser {
                 )
             }
 
-            let result = try Terminal.chooseResult(
+            let result = try chooseResult(
                 area.terminalTitle,
                 choices: choices,
                 default:
@@ -302,7 +305,7 @@ struct GuidelinesManualBrowser {
                 return
             }
 
-            let result = try Terminal.chooseResult(
+            let result = try chooseResult(
                 chapter.title,
                 choices: choices,
                 default:
@@ -364,23 +367,20 @@ struct GuidelinesManualBrowser {
     ) throws -> String {
         var index = initialIndex
 
-        while true {
-            clearPage()
-
-            let guideline = chapter.guidelines[
-                index
-            ]
-
-            Terminal.write(
-                GuidelineTerminalRenderer.render(
-                    guideline
-                )
-                + "\n",
-                to: .standardError
+        let viewer =
+            GuidelineDocumentViewer(
+                outputStream: .standardError
             )
 
+        while true {
+            let guideline =
+                chapter.guidelines[
+                    index
+                ]
+
             let hasPrevious =
-                index > chapter.guidelines.startIndex
+                index
+                > chapter.guidelines.startIndex
 
             let hasNext =
                 index
@@ -389,59 +389,33 @@ struct GuidelinesManualBrowser {
                         chapter.guidelines.endIndex
                 )
 
-            let choices = [
-                TerminalMenuItem(
-                    id: PageAction.previous,
-                    title: "Previous",
-                    caption: hasPrevious
-                        ? chapter.guidelines[
-                            index - 1
-                        ].title
-                        : nil,
-                    isEnabled: hasPrevious
-                ),
-                TerminalMenuItem(
-                    id: PageAction.chapter,
-                    title: "Back to chapter",
-                    caption: chapter.title
-                ),
-                TerminalMenuItem(
-                    id: PageAction.next,
-                    title: "Next",
-                    caption: hasNext
-                        ? chapter.guidelines[
-                            index + 1
-                        ].title
-                        : nil,
-                    isEnabled: hasNext
-                ),
-            ]
+            let result = try viewer.run(
+                document:
+                    GuidelineTerminalRenderer.render(
+                        guideline
+                    ),
+                initialOffset:
+                    navigation.scrollOffsetByReference[
+                        guideline.reference
+                    ]
+                    ?? 0,
+                hasPrevious: hasPrevious,
+                hasNext: hasNext
+            )
 
-            let defaultAction: PageAction =
-                hasNext
-                ? .next
-                : .chapter
+            navigation.scrollOffsetByReference[
+                guideline.reference
+            ] = result.offset
 
-            guard let action = try Terminal.choose(
-                "Navigate",
-                choices: choices,
-                default: defaultAction,
-                instructions:
-                    "Enter follows the selected action. "
-                    + "q/Esc returns to the chapter."
-            ) else {
-                return guideline.reference
-            }
-
-            switch action {
+            switch result.action {
             case .previous:
                 index -= 1
 
-            case .chapter:
-                return guideline.reference
-
             case .next:
                 index += 1
+
+            case .back:
+                return guideline.reference
             }
         }
     }
@@ -449,29 +423,29 @@ struct GuidelinesManualBrowser {
     private func showOverview(
         _ chapter: GuidelineChapter
     ) throws {
-        clearPage()
+        let reference =
+            "chapter:"
+            + chapter.reference
 
-        Terminal.write(
-            GuidelineTerminalRenderer.render(
-                chapter
-            )
-            + "\n",
-            to: .standardError
-        )
-
-        _ = try Terminal.choose(
-            "Navigate",
-            choices: [
-                TerminalMenuItem(
-                    id: ChapterAction.back,
-                    title: "Back to chapter",
-                    caption: chapter.title
+        let result = try GuidelineDocumentViewer(
+            outputStream: .standardError
+        ).run(
+            document:
+                GuidelineTerminalRenderer.render(
+                    chapter
                 ),
-            ],
-            default: .back,
-            instructions:
-                "Enter or q/Esc returns to the chapter."
+            initialOffset:
+                navigation.scrollOffsetByReference[
+                    reference
+                ]
+                ?? 0,
+            hasPrevious: false,
+            hasNext: false
         )
+
+        navigation.scrollOffsetByReference[
+            reference
+        ] = result.offset
     }
 
     private func chapters(
@@ -508,6 +482,79 @@ struct GuidelinesManualBrowser {
             .joined(
                 separator: " "
             )
+    }
+
+    private func chooseResult<
+        ID: Hashable & Sendable
+    >(
+        _ title: String,
+        choices: [TerminalMenuItem<ID>],
+        default defaultID: ID? = nil,
+        instructions: String
+    ) throws -> TerminalChoiceResult<ID> {
+        let width =
+            Terminal.size(
+                for: .standardError
+            ).columns
+
+        let menu =
+            TerminalInteractiveMenu<
+                TerminalMenuItem<ID>,
+                ID
+            >(
+                items: choices,
+                configuration:
+                    TerminalInteractiveMenuConfiguration(
+                        title: title,
+                        instructions: instructions,
+                        wrapMode: .wrap,
+                        useAlternateScreen: false,
+                        hideCursor: true,
+                        outputStream: .standardError,
+                        presentation: .fullscreen,
+                        completionPresentation: .clear,
+                        currentRowStyle: .inverse
+                    ),
+                id: {
+                    $0.id
+                },
+                isEnabled: {
+                    $0.isEnabled
+                },
+                row: {
+                    row in
+
+                    row.item.rowContent.render(
+                        isCurrent: row.isCurrent,
+                        isEnabled: row.isEnabled,
+                        theme: .agentic,
+                        width: width
+                    )
+                }
+            )
+
+        let result =
+            try menu.runRetainingState(
+                initialID: defaultID
+            )
+
+        switch result {
+        case .picked(
+            _,
+            let id
+        ):
+            return .picked(
+                id
+            )
+
+        case .cancelled(
+            _,
+            let currentID
+        ):
+            return .cancelled(
+                current: currentID
+            )
+        }
     }
 
     private func clearPage() {

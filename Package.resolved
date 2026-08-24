@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/Guidelines.git",
       "state" : {
         "branch" : "master",
-        "revision" : "5fd86e2bf19bae52225bb60fa92849e384516492"
+        "revision" : "291aa754280d486e1df94cba3fd13fcd7487f86a"
       }
     },
     {
@@ -79,7 +79,7 @@
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "95b8c4bbb8270018b9c2031119fcd486c0114696"
+        "revision" : "33c84f4d8bd88f844af2433618c89937a68a6d6f"
       }
     },
     {
