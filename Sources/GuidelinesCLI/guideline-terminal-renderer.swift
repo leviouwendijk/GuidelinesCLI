@@ -1,65 +1,62 @@
 import Guidelines
+import GuidelinesSearch
 import Terminal
+import TerminalStructuredContent
 
 enum GuidelineTerminalRenderer {
     static func render(
-        _ guideline: Guideline
+        _ guideline: Guideline,
+        in chapter: GuidelineChapter,
+        width: Int
     ) -> String {
-        let width = contentWidth()
+        let width = max(
+            1,
+            width
+        )
 
-        let header = TerminalDetailDocument(
+        let header = renderHeader(
             title: guideline.title,
-            sections: [
-                .init(
-                    title: "Guideline",
-                    items: [
-                        .field(
-                            label: "Reference",
-                            value: guideline.reference
-                        ),
-                        .field(
-                            label: "Area",
-                            value: guideline.area.terminalTitle
-                        ),
-                    ]
-                ),
-            ],
-            theme: .agentic,
-            layout: .agentic
+            context:
+                chapter.area.terminalTitle
+                + " · "
+                + chapter.title,
+            reference: guideline.reference,
+            width: width
         )
 
         let summary = [
-            "Summary"
+            "SUMMARY"
                 .ansi(
                     .brightBlack,
                     .bold
                 ),
-            wrap(
-                guideline.summary,
-                width: width
+            indent(
+                wrap(
+                    guideline.summary,
+                    width: max(
+                        1,
+                        width - 2
+                    )
+                ),
+                by: 2
             ),
         ]
         .joined(
             separator: "\n"
         )
 
-        let explanation = render(
+        let explanation = contentRenderer.render(
             guideline.explanation,
-            width: width
+            columns: width
         )
 
         return [
-            header.render(
-                width: width
-            ),
+            header,
             summary,
             divider(
                 width: width
             ),
             explanation,
-            divider(
-                width: width
-            ),
         ]
         .filter {
             !$0.isEmpty
@@ -70,232 +67,129 @@ enum GuidelineTerminalRenderer {
     }
 
     static func render(
-        _ chapter: GuidelineChapter
+        _ chapter: GuidelineChapter,
+        width: Int
     ) -> String {
-        let width = contentWidth()
-
-        let body = chapter.introduction.isEmpty
-            ? "This chapter has no separate overview."
-            : render(
-                chapter.introduction,
-                width: width
-            )
-
-        return TerminalDetailDocument(
-            title: chapter.title,
-            sections: [
-                .init(
-                    title: "Chapter",
-                    items: [
-                        .field(
-                            label: "Reference",
-                            value: chapter.reference
-                        ),
-                        .field(
-                            label: "Area",
-                            value: chapter.area.terminalTitle
-                        ),
-                        .field(
-                            label: "Guidelines",
-                            value: "\(chapter.guidelines.count)"
-                        ),
-                        .body(
-                            body
-                        ),
-                    ]
-                ),
-            ],
-            theme: .agentic,
-            layout: .agentic
+        let width = max(
+            1,
+            width
         )
-        .render(
+
+        let header = renderHeader(
+            title: chapter.title,
+            context:
+                chapter.area.terminalTitle
+                + " · Chapter overview",
+            reference: chapter.reference,
+            detail:
+                guidelineCountDescription(
+                    chapter.guidelines.count
+                ),
             width: width
         )
-    }
 
-    static func render(
-        _ blocks: [GuidelineContent.Block],
-        width: Int
-    ) -> String {
-        blocks
-            .map {
-                render(
-                    $0,
-                    width: width
-                )
-            }
-            .filter {
-                !$0.isEmpty
-            }
-            .joined(
-                separator: "\n\n"
+        let body = GuidelineStructuredContentProjection.isEmpty(
+            chapter.introduction
+        )
+            ? "This chapter has no separate overview."
+            : contentRenderer.render(
+                chapter.introduction,
+                columns: width
             )
-    }
 
-    private static func render(
-        _ block: GuidelineContent.Block,
-        width: Int
-    ) -> String {
-        switch block {
-        case .paragraph(let content):
-            return wrap(
-                content,
+        return [
+            header,
+            divider(
                 width: width
-            )
+            ),
+            body,
+        ]
+        .filter {
+            !$0.isEmpty
+        }
+        .joined(
+            separator: "\n\n"
+        )
+    }
 
-        case .code(
-            let language,
-            let content
-        ):
-            let label: String
+    private static let contentRenderer: TerminalStructuredContent.Renderer = {
+        var format = TerminalStructuredContent.Format.minimal
 
-            if let language {
-                label = "[\(language)]"
-                    .ansi(
+        format.block.group.roles[
+            GuidelineContent.Role.example.structuredContentRole
+        ] = .init(
+            titlePrefix: "Example",
+            titleStyle: .init(
+                .bold,
+                .brightBlack
+            ),
+            contentIndent: 4,
+            spacing: 0
+        )
+
+        return TerminalStructuredContent.Renderer(
+            format: format
+        )
+    }()
+
+    private static func renderHeader(
+        title: String,
+        context: String,
+        reference: String,
+        detail: String? = nil,
+        width: Int
+    ) -> String {
+        var lines = [
+            styledLines(
+                wrap(
+                    title,
+                    width: width
+                ),
+                style: .init(
+                    .bold,
+                    .brightCyan
+                )
+            ),
+            "",
+            styledLines(
+                wrap(
+                    context,
+                    width: width
+                ),
+                style: .init(
+                    .brightBlack,
+                    .bold
+                )
+            ),
+            styledLines(
+                wrap(
+                    reference,
+                    width: width
+                ),
+                style: .init(
+                    .brightBlack
+                )
+            ),
+        ]
+
+        if let detail,
+           !detail.isEmpty {
+            lines.append(
+                styledLines(
+                    wrap(
+                        detail,
+                        width: width
+                    ),
+                    style: .init(
                         .brightBlack
                     )
-                    + "\n"
-            } else {
-                label = ""
-            }
-
-            let code = content
-                .split(
-                    separator: "\n",
-                    omittingEmptySubsequences: false
                 )
-                .map {
-                    "    \($0)"
-                }
-                .joined(
-                    separator: "\n"
-                )
-                .ansi(
-                    .dim
-                )
-
-            return label + code
-
-        case .quote(let content):
-            return TerminalTextWrap
-                .lines(
-                    content,
-                    width: max(
-                        1,
-                        width - 4
-                    )
-                )
-                .map {
-                    "│ \($0)"
-                }
-                .joined(
-                    separator: "\n"
-                )
-                .ansi(
-                    .italic
-                )
-
-        case .list(
-            let style,
-            let items
-        ):
-            return renderList(
-                style: style,
-                items: items,
-                width: width
             )
-
-        case .example(let example):
-            let title = example.title
-                .map {
-                    "Example: \($0)"
-                }
-                ?? "Example"
-
-            return title
-                .ansi(
-                    .bold,
-                    .brightCyan
-                )
-                + "\n"
-                + indent(
-                    render(
-                        example.content,
-                        width: max(
-                            1,
-                            width - 4
-                        )
-                    ),
-                    by: 4
-                )
-
-        case .section(let section):
-            return section.title
-                .ansi(
-                    .bold,
-                    .brightCyan
-                )
-                + "\n\n"
-                + render(
-                    section.content,
-                    width: width
-                )
         }
-    }
 
-    private static func renderList(
-        style: GuidelineContent.ListStyle,
-        items: [String],
-        width: Int
-    ) -> String {
-        items
-            .enumerated()
-            .map {
-                index,
-                item in
-
-                let marker: String
-
-                switch style {
-                case .unordered:
-                    marker = "- "
-
-                case .ordered:
-                    marker = "\(index + 1). "
-                }
-
-                let wrapped = TerminalTextWrap.lines(
-                    item,
-                    width: max(
-                        1,
-                        width - marker.count
-                    )
-                )
-
-                guard let first = wrapped.first else {
-                    return marker
-                }
-
-                let continuation = String(
-                    repeating: " ",
-                    count: marker.count
-                )
-
-                return (
-                    [marker + first]
-                    + wrapped
-                        .dropFirst()
-                        .map {
-                            continuation + $0
-                        }
-                )
-                .joined(
-                    separator: "\n"
-                )
-            }
-            .joined(
-                separator: "\n"
-            )
+        return lines.joined(
+            separator: "\n"
+        )
     }
 
     private static func divider(
@@ -305,15 +199,20 @@ enum GuidelineTerminalRenderer {
             repeating: "─",
             count: max(
                 1,
-                min(
-                    width,
-                    72
-                )
+                width
             )
         )
         .ansi(
             .brightBlack
         )
+    }
+
+    private static func guidelineCountDescription(
+        _ count: Int
+    ) -> String {
+        count == 1
+            ? "1 guideline"
+            : "\(count) guidelines"
     }
 
     private static func wrap(
@@ -322,11 +221,46 @@ enum GuidelineTerminalRenderer {
     ) -> String {
         TerminalTextWrap
             .lines(
-                content,
+                normalizedProse(
+                    content
+                ),
                 width: width
             )
             .joined(
                 separator: "\n"
+            )
+    }
+
+    private static func styledLines(
+        _ content: String,
+        style: TerminalStyle
+    ) -> String {
+        let lines = content
+            .split(
+                separator: "\n",
+                omittingEmptySubsequences: false
+            )
+            .map(String.init)
+
+        return style
+            .apply(
+                lines: lines
+            )
+            .joined(
+                separator: "\n"
+            )
+    }
+
+    private static func normalizedProse(
+        _ content: String
+    ) -> String {
+        content
+            .split(
+                whereSeparator:
+                    \.isWhitespace
+            )
+            .joined(
+                separator: " "
             )
     }
 
@@ -352,14 +286,5 @@ enum GuidelineTerminalRenderer {
             .joined(
                 separator: "\n"
             )
-    }
-
-    private static func contentWidth() -> Int {
-        max(
-            40,
-            Terminal.size(
-                for: .standardError
-            ).columns - 2
-        )
     }
 }

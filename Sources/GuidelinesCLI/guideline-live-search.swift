@@ -1,5 +1,6 @@
 import Darwin
 import Dispatch
+import GuidelinesSearch
 import Terminal
 
 struct GuidelineLiveSearchConfiguration:

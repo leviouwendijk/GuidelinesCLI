@@ -21,19 +21,11 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/GuidelinesSearch.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Terminal.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/Fuzzy.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/Matching.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/Ranking.git",
             branch: "master"
         ),
     ],
@@ -46,20 +38,16 @@ let package = Package(
                     package: "Guidelines"
                 ),
                 .product(
+                    name: "GuidelinesSearch",
+                    package: "GuidelinesSearch"
+                ),
+                .product(
                     name: "Terminal",
                     package: "Terminal"
                 ),
                 .product(
-                    name: "Fuzzy",
-                    package: "Fuzzy"
-                ),
-                .product(
-                    name: "Matching",
-                    package: "Matching"
-                ),
-                .product(
-                    name: "Ranking",
-                    package: "Ranking"
+                    name: "TerminalStructuredContent",
+                    package: "Terminal"
                 ),
             ]
         ),

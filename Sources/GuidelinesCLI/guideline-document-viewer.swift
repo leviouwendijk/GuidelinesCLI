@@ -22,6 +22,8 @@ struct GuidelineDocumentViewer {
         let rows: Int
         let columns: Int
         let contentRows: Int
+        let documentWidth: Int
+        let documentIndent: Int
         let maximumOffset: Int
     }
 
@@ -34,7 +36,7 @@ struct GuidelineDocumentViewer {
     }
 
     func run(
-        document: String,
+        document: (Int) -> String,
         initialOffset: Int = 0,
         hasPrevious: Bool,
         hasNext: Bool
@@ -56,26 +58,29 @@ struct GuidelineDocumentViewer {
 
         let reader = TerminalKeyReader()
 
-        let lines = document
-            .split(
-                separator: "\n",
-                omittingEmptySubsequences: false
-            )
-            .map(
-                String.init
-            )
-
-        var geometry = resolveGeometry(
-            lineCount: lines.count
-        )
-
-        var offset = clampedOffset(
-            initialOffset,
-            maximum: geometry.maximumOffset
+        var offset = max(
+            0,
+            initialOffset
         )
 
         while true {
-            geometry = resolveGeometry(
+            let size = Terminal.size(
+                for: outputStream
+            )
+
+            let provisionalGeometry = resolveGeometry(
+                size: size,
+                lineCount: 0
+            )
+
+            let lines = documentLines(
+                document(
+                    provisionalGeometry.documentWidth
+                )
+            )
+
+            let geometry = resolveGeometry(
+                size: size,
                 lineCount: lines.count
             )
 
@@ -157,7 +162,8 @@ struct GuidelineDocumentViewer {
                 offset =
                     geometry.maximumOffset
 
-            case .left:
+            case .left,
+                 .char("h"):
                 guard hasPrevious else {
                     continue
                 }
@@ -167,7 +173,8 @@ struct GuidelineDocumentViewer {
                     offset: offset
                 )
 
-            case .right:
+            case .right,
+                 .char("l"):
                 guard hasNext else {
                     continue
                 }
@@ -191,10 +198,30 @@ struct GuidelineDocumentViewer {
     }
 
     private func resolveGeometry(
+        size: TerminalSize,
         lineCount: Int
     ) -> Geometry {
-        let size = Terminal.size(
-            for: outputStream
+        let preferredIndent = 2
+        let preferredRightMargin = 2
+
+        let availableWidth = max(
+            1,
+            size.columns
+                - preferredIndent
+                - preferredRightMargin
+        )
+
+        let documentWidth = min(
+            84,
+            availableWidth
+        )
+
+        let documentIndent = min(
+            preferredIndent,
+            max(
+                0,
+                size.columns - documentWidth
+            )
         )
 
         let contentRows = max(
@@ -206,12 +233,27 @@ struct GuidelineDocumentViewer {
             rows: size.rows,
             columns: size.columns,
             contentRows: contentRows,
+            documentWidth: documentWidth,
+            documentIndent: documentIndent,
             maximumOffset:
                 max(
                     0,
                     lineCount - contentRows
                 )
         )
+    }
+
+    private func documentLines(
+        _ document: String
+    ) -> [String] {
+        document
+            .split(
+                separator: "\n",
+                omittingEmptySubsequences: false
+            )
+            .map(
+                String.init
+            )
     }
 
     private func render(
@@ -232,6 +274,12 @@ struct GuidelineDocumentViewer {
             frame = Array(
                 lines[offset..<end]
             )
+            .map {
+                indentedDocumentLine(
+                    $0,
+                    amount: geometry.documentIndent
+                )
+            }
         } else {
             frame = []
         }
@@ -270,7 +318,11 @@ struct GuidelineDocumentViewer {
 
         frame.append(
             fitted(
-                "\(visibleStart)–\(visibleEnd) / \(lines.count)",
+                status(
+                    visibleStart: visibleStart,
+                    visibleEnd: visibleEnd,
+                    lineCount: lines.count
+                ),
                 columns: geometry.columns
             )
             .ansi(
@@ -313,6 +365,29 @@ struct GuidelineDocumentViewer {
         )
     }
 
+    private func status(
+        visibleStart: Int,
+        visibleEnd: Int,
+        lineCount: Int
+    ) -> String {
+        let percentage: Int
+
+        if lineCount == 0 {
+            percentage = 100
+        } else {
+            percentage = min(
+                100,
+                Int(
+                    Double(visibleEnd)
+                    / Double(lineCount)
+                    * 100
+                )
+            )
+        }
+
+        return "\(visibleStart)–\(visibleEnd) / \(lineCount)  \(percentage)%"
+    }
+
     private func instructions(
         hasPrevious: Bool,
         hasNext: Bool
@@ -325,7 +400,7 @@ struct GuidelineDocumentViewer {
 
         if hasPrevious || hasNext {
             components.append(
-                "←/→ prev/next"
+                "h/l/←/→ prev/next"
             )
         }
 
@@ -336,6 +411,21 @@ struct GuidelineDocumentViewer {
         return components.joined(
             separator: "  "
         )
+    }
+
+    private func indentedDocumentLine(
+        _ line: String,
+        amount: Int
+    ) -> String {
+        guard !line.isEmpty,
+              amount > 0 else {
+            return line
+        }
+
+        return String(
+            repeating: " ",
+            count: amount
+        ) + line
     }
 
     private func fitted(

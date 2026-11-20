@@ -1,4 +1,5 @@
 import Guidelines
+import GuidelinesSearch
 import Terminal
 
 struct GuidelinesManualBrowser {
@@ -275,7 +276,9 @@ struct GuidelinesManualBrowser {
                 TerminalMenuItem<String>
             ] = []
 
-            if !chapter.introduction.isEmpty {
+            if !GuidelineStructuredContentProjection.isEmpty(
+                chapter.introduction
+            ) {
                 choices.append(
                     .init(
                         id: chapterOverviewID,
@@ -390,10 +393,13 @@ struct GuidelinesManualBrowser {
                 )
 
             let result = try viewer.run(
-                document:
+                document: { width in
                     GuidelineTerminalRenderer.render(
-                        guideline
-                    ),
+                        guideline,
+                        in: chapter,
+                        width: width
+                    )
+                },
                 initialOffset:
                     navigation.scrollOffsetByReference[
                         guideline.reference
@@ -430,10 +436,12 @@ struct GuidelinesManualBrowser {
         let result = try GuidelineDocumentViewer(
             outputStream: .standardError
         ).run(
-            document:
+            document: { width in
                 GuidelineTerminalRenderer.render(
-                    chapter
-                ),
+                    chapter,
+                    width: width
+                )
+            },
             initialOffset:
                 navigation.scrollOffsetByReference[
                     reference
